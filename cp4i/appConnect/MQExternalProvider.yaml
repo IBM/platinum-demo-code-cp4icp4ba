@@ -1,0 +1,128 @@
+# © Copyright IBM Corporation 2022
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+$integration: http://ibm.com/appconnect/integration/v2/integrationFile
+integration:
+  type: trigger-action
+  trigger-interfaces:
+    trigger-interface-1:
+      connector-type: mq
+      type: event-trigger
+      triggers:
+        CREATED:
+          input-context:
+            data: message
+          assembly:
+            $ref: '#/integration/assemblies/assembly-1'
+          options:
+            subscription:
+              queueName: IN
+      account-name: Account 1
+  action-interfaces:
+    action-interface-1:
+      type: api-action
+      business-object: message
+      connector-type: mq
+      account-name: Account 1
+      actions:
+        PUTMESSAGE: {}
+  assemblies:
+    assembly-1:
+      assembly:
+        execute:
+          - parse:
+              name: JSON Parser Parse
+              parse-format: json
+              source:
+                template: '{{$Trigger.message}}'
+                input:
+                  - variable: Trigger
+                    $ref: '#/trigger/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+              sample-data: '{"customerId": "1234567890"}'
+              output-schema:
+                $schema: http://json-schema.org/draft-04/schema#
+                type: object
+                properties:
+                  customerId:
+                    type: string
+                title: Parsed JSON
+          - set-variable:
+              name: Set variable
+              map:
+                $map: http://ibm.com/appconnect/map/v1
+                customSchemas:
+                  properties.`variable`:
+                    type: object
+                    properties:
+                      ExternalAccount:
+                        type: object
+                        properties:
+                          accountNumber:
+                            type: string
+                          balance:
+                            type: string
+                          status:
+                            type: string
+                          lastTransaction:
+                            type: string
+                          dateOpened:
+                            type: string
+                input:
+                  - variable: Trigger
+                    $ref: '#/trigger/payload'
+                  - variable: JSONParserParse
+                    $ref: '#/node-output/JSON Parser Parse/response/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+                mappings:
+                  - variable:
+                      mappings:
+                        - ExternalAccount:
+                            mappings:
+                              - accountNumber:
+                                  template: EXT{{$JSONParserParse.customerId}}
+                              - balance:
+                                  template: ${{$round($random()*1000)}}.00
+                              - dateOpened:
+                                  template: Oct 10 2018
+                              - lastTransaction:
+                                  template: October 30th 2021 Credit $1.00
+                              - status:
+                                  template: Active
+          - custom-action:
+              name: IBM MQ Put message on a queue
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-1'
+              action: PUTMESSAGE
+              map:
+                mappings:
+                  - message:
+                      template: '{{$Setvariable.variable.ExternalAccount}}'
+                  - messageType:
+                      template: TEXT
+                  - queueName:
+                      template: OUT
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: Trigger
+                    $ref: '#/trigger/payload'
+                  - variable: JSONParserParse
+                    $ref: '#/node-output/JSON Parser Parse/response/payload'
+                  - variable: Setvariable
+                    $ref: '#/node-output/Set variable/response/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+  name: ExternalProvider
+models: {}

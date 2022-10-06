@@ -1,0 +1,456 @@
+# © Copyright IBM Corporation 2022
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+$integration: http://ibm.com/appconnect/integration/v2/integrationFile
+integration:
+  type: api
+  trigger-interfaces:
+    trigger-interface-1:
+      triggers:
+        retrieveAccounts:
+          assembly:
+            $ref: '#/integration/assemblies/assembly-1'
+          input-context:
+            data: Accounts
+          output-context:
+            data: Accounts
+      options:
+        resources:
+          - business-object: Accounts
+            model:
+              $ref: '#/models/Accounts'
+            triggers:
+              retrieve: retrieveAccounts
+      type: api-trigger
+  action-interfaces:
+    action-interface-1:
+      type: api-action
+      business-object: getCustomerAccounts_model
+      connector-type: UDA.default.openapi.Customer Account Information
+      account-name: Account 1
+      actions:
+        getCustomerAccounts: {}
+    action-interface-2:
+      type: api-action
+      business-object: message
+      connector-type: mq
+      account-name: Account 1
+      actions:
+        PUTMESSAGE: {}
+    action-interface-3:
+      type: api-action
+      business-object: message
+      connector-type: mq
+      account-name: Account 1
+      actions:
+        GETMESSAGE: {}
+  assemblies:
+    assembly-1:
+      assembly:
+        execute:
+          - custom-action:
+              name: Customer Account Information getCustomerAccounts
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-1'
+              action: getCustomerAccounts
+              map:
+                mappings:
+                  - customerId:
+                      template: '{{$api.customerId}}'
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: api
+                    $ref: '#/trigger/api/parameters'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - custom-action:
+              name: IBM MQ Put message on a queue
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-2'
+              action: PUTMESSAGE
+              map:
+                mappings:
+                  - message:
+                      template: '{"customerId": "{{$api.customerId}}"}'
+                  - messageType:
+                      template: TEXT
+                  - queueName:
+                      template: IN
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: api
+                    $ref: '#/trigger/api/parameters'
+                  - variable: CustomerAccountInformationgetCustomerAccounts
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response/payload
+                  - variable: CustomerAccountInformationgetCustomerAccountsMetadata
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response
+                  - variable: Setvariable
+                    $ref: '#/node-output/Set variable/response/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - custom-action:
+              name: IBM MQ Get message from a queue
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-3'
+              action: GETMESSAGE
+              map:
+                mappings:
+                  - queueName:
+                      template: OUT
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: api
+                    $ref: '#/trigger/api/parameters'
+                  - variable: CustomerAccountInformationgetCustomerAccounts
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response/payload
+                  - variable: CustomerAccountInformationgetCustomerAccountsMetadata
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response
+                  - variable: Setvariable
+                    $ref: '#/node-output/Set variable/response/payload'
+                  - variable: IBMMQPutmessageonaqueue
+                    $ref: >-
+                      #/node-output/IBM MQ Put message on a
+                      queue/response/payload
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - parse:
+              name: JSON Parser Parse
+              parse-format: json
+              source:
+                template: '{{$IBMMQGetmessagefromaqueue.message}}'
+                input:
+                  - variable: api
+                    $ref: '#/trigger/api/parameters'
+                  - variable: CustomerAccountInformationgetCustomerAccounts
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response/payload
+                  - variable: CustomerAccountInformationgetCustomerAccountsMetadata
+                    $ref: >-
+                      #/node-output/Customer Account Information
+                      getCustomerAccounts/response
+                  - variable: IBMMQPutmessageonaqueue
+                    $ref: >-
+                      #/node-output/IBM MQ Put message on a
+                      queue/response/payload
+                  - variable: IBMMQGetmessagefromaqueue
+                    $ref: >-
+                      #/node-output/IBM MQ Get message from a
+                      queue/response/payload
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+              sample-data: |-
+                {
+                  "accountNumber": "EXT1234567890",
+                  "balance": "$10000.00",
+                  "dateOpened": "Jan 5th 2018",
+                  "lastTransaction": "July 18th 2022 Credit $50.00",
+                  "status": "Active"
+                }
+              output-schema:
+                $schema: http://json-schema.org/draft-04/schema#
+                type: object
+                properties:
+                  accountNumber:
+                    type: string
+                  balance:
+                    type: string
+                  dateOpened:
+                    type: string
+                  lastTransaction:
+                    type: string
+                  status:
+                    type: string
+                title: Parsed JSON
+          - response:
+              name: response-1
+              reply-maps:
+                - title: Accounts successfully retrieved
+                  status-code: 200
+                  map:
+                    $map: http://ibm.com/appconnect/map/v1
+                    input:
+                      - variable: api
+                        $ref: '#/trigger/api/parameters'
+                      - variable: CustomerAccountInformationgetCustomerAccounts
+                        $ref: >-
+                          #/node-output/Customer Account Information
+                          getCustomerAccounts/response/payload
+                      - variable: CustomerAccountInformationgetCustomerAccountsMetadata
+                        $ref: >-
+                          #/node-output/Customer Account Information
+                          getCustomerAccounts/response
+                      - variable: IBMMQPutmessageonaqueue
+                        $ref: >-
+                          #/node-output/IBM MQ Put message on a
+                          queue/response/payload
+                      - variable: IBMMQGetmessagefromaqueue
+                        $ref: >-
+                          #/node-output/IBM MQ Get message from a
+                          queue/response/payload
+                      - variable: JSONParserParse
+                        $ref: '#/node-output/JSON Parser Parse/response/payload'
+                      - variable: flowDetails
+                        $ref: '#/flowDetails'
+                    mappings:
+                      - checkingAccount:
+                          mappings:
+                            - accountNumber:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.checking.accountNumber}}
+                            - balance:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.checking.balance}}
+                            - dateOpened:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.checking.dateOpened}}
+                            - lastTransaction:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.checking.lastTransaction}}
+                            - status:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.checking.status}}
+                      - customerId:
+                          template: '{{$api.customerId}}'
+                      - loanAccount:
+                          mappings:
+                            - accountNumber:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.loans.accountNumber}}
+                            - balance:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.loans.balance}}
+                            - dateOpened:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.loans.dateOpened}}
+                            - lastTransaction:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.loans.lastTransaction}}
+                            - status:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.loans.status}}
+                      - partnerAccount:
+                          mappings:
+                            - accountNumber:
+                                template: '{{$JSONParserParse.accountNumber}}'
+                            - balance:
+                                template: '{{$JSONParserParse.balance}}'
+                            - dateOpened:
+                                template: '{{$JSONParserParse.dateOpened}}'
+                            - lastTransaction:
+                                template: '{{$JSONParserParse.lastTransaction}}'
+                            - status:
+                                template: '{{$JSONParserParse.status}}'
+                      - savingAccount:
+                          mappings:
+                            - accountNumber:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.savings.accountNumber}}
+                            - balance:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.savings.balance}}
+                            - dateOpened:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.savings.dateOpened}}
+                            - lastTransaction:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.savings.lastTransaction}}
+                            - status:
+                                template: >-
+                                  {{$CustomerAccountInformationgetCustomerAccounts.response."200".accounts.savings.status}}
+                  input: []
+        catch:
+          - default:
+              - response:
+                  name: response-1
+                  reply-maps:
+                    - title: Bad request
+                      status-code: '200'
+                      map:
+                        mappings:
+                          - message:
+                              template: >-
+                                Unable to find account information for
+                                {{$api.customerId}}
+                        $map: http://ibm.com/appconnect/map/v1
+                        input:
+                          - variable: api
+                            $ref: '#/trigger/api/parameters'
+                          - variable: errorDetails
+                            $ref: '#/error'
+                          - variable: flowDetails
+                            $ref: '#/flowDetails'
+                      input:
+                        - variable: api
+                          $ref: '#/trigger/api/parameters'
+                        - variable: errorDetails
+                          $ref: '#/error'
+                        - variable: flowDetails
+                          $ref: '#/flowDetails'
+  name: Accounts
+models:
+  Accounts:
+    name: Accounts
+    properties:
+      customerId:
+        required: false
+        id: true
+        type: string
+      checkingAccount:
+        required: false
+        id: false
+        type:
+          accountNumber:
+            required: false
+            id: false
+            type: string
+          balance:
+            required: false
+            id: false
+            type: string
+          status:
+            required: false
+            id: false
+            type: string
+          lastTransaction:
+            required: false
+            id: false
+            type: string
+          dateOpened:
+            required: false
+            id: false
+            type: string
+      savingAccount:
+        required: false
+        id: false
+        type:
+          accountNumber:
+            required: false
+            id: false
+            type: string
+          balance:
+            required: false
+            id: false
+            type: string
+          status:
+            required: false
+            id: false
+            type: string
+          lastTransaction:
+            required: false
+            id: false
+            type: string
+          dateOpened:
+            required: false
+            id: false
+            type: string
+      loanAccount:
+        required: false
+        id: false
+        type:
+          accountNumber:
+            required: false
+            id: false
+            type: string
+          balance:
+            required: false
+            id: false
+            type: string
+          status:
+            required: false
+            id: false
+            type: string
+          lastTransaction:
+            required: false
+            id: false
+            type: string
+          dateOpened:
+            required: false
+            id: false
+            type: string
+      partnerAccount:
+        required: false
+        id: false
+        type:
+          accountNumber:
+            required: false
+            id: false
+            type: string
+          balance:
+            required: false
+            id: false
+            type: string
+          status:
+            required: false
+            id: false
+            type: string
+          lastTransaction:
+            required: false
+            id: false
+            type: string
+          dateOpened:
+            required: false
+            id: false
+            type: string
+    plural: Accounts
+    description: ' '
+    operations:
+      retrieve: '#/integration/assemblies/assembly-1'
+x-ibm-configuration:
+  gateway: datapower-api-gateway
+  type: rest
+  phase: realized
+  enforced: true
+  testable: true
+  cors:
+    enabled: true
+  assembly:
+    execute:
+      - invoke:
+          title: Invoke flow
+          version: 2.0.0
+          verb: keep
+          target-url: $(app-connect-designer-url)$(request.path)
+          follow-redirects: false
+          timeout: 60
+          parameter-control:
+            type: blacklist
+          header-control:
+            type: blacklist
+          inject-proxy-headers: true
+          username: $(app-connect-designer-username)
+          password: $(app-connect-designer-password)
+  properties:
+    app-connect-designer-url:
+      description: The URL of the App Connect Designer API endpoint.
+      encoded: false
+      value: >-
+        https://ace-designer-demo-designer-https-cp4i.itzroks-120000k3ak-vdmhkg-4b4a324f027aea19c5cbc0c3275c4656-0000.eu-de.containers.appdomain.cloud
+    app-connect-designer-username:
+      description: >-
+        The username required for basic authentication to the App Connect
+        Designer API endpoint.
+      value: 2UVYlQP7
+    app-connect-designer-password:
+      description: >-
+        The password required for basic authentication to the App Connect
+        Designer API endpoint.
+      value: tCTDy9UHBKws1J28lxMY5Ze07pEuchb4
