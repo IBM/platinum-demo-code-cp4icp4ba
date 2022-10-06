@@ -15,7 +15,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: mqbasic
-  namespace: $TARGET_NAMESPACE
+  namespace: cp4i
 data:
   mq.mqsc: |-
     define ql(IN)
@@ -27,7 +27,7 @@ apiVersion: mq.ibm.com/v1beta1
 kind: QueueManager
 metadata:
   name: basicmq
-  namespace: $TARGET_NAMESPACE
+  namespace: cp4i
 spec:
   version: 9.2.4.0-r1
   license:
