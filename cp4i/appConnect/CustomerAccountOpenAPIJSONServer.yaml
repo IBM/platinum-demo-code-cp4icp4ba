@@ -27,6 +27,8 @@ paths:
       summary: Find customer accounts by customer ID
       description: For valid response try integer IDs with 10 characters.
       operationId: getCustomerAccounts
+      tags: 
+        - Accounts
       parameters:
         - name: customerId
           in: path
