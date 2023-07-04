@@ -16,10 +16,10 @@ metadata:
   name: basicmq
   namespace: {{NAMESPACE}}
 spec:
-  version: 9.3.1.0-r1
+  version: 9.3.3.0-r1
   license:
     accept: true
-    license: L-RJON-CJR2RX
+    license: L-YBXJ-ADJNSM
     use: "NonProduction"
   web:
     enabled: true
