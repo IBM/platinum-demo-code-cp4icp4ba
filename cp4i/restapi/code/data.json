@@ -1,0 +1,27 @@
+{
+    "id": 1234567890,
+    "name": "Kim Clark",
+    "accounts": {
+      "savings": {
+        "accountNumber": "SAV1234567890",
+        "balance": "$10000.00",
+        "status": "Active",
+        "lastTransaction": "July 18th 2022 Credit $50.00",
+        "dateOpened": "Jan 5 2018"
+      },
+      "checking": {
+        "accountNumber": "CHK1234567890",
+        "balance": "$100.00",
+        "status": "Active",
+        "lastTransaction": "July 25th 2022 Debit $25.00",
+        "dateOpened": "Feb 11 2017"
+      },
+      "loans": {
+        "accountNumber": "LOAN1234567890",
+        "balance": "$10000.00",
+        "status": "Active",
+        "lastTransaction": "July 25th 2022 Credit $1000.00",
+        "dateOpened": "Feb 11 2017"
+      }
+    }
+  }

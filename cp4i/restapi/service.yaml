@@ -1,0 +1,35 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: restapi
+  labels:
+    app: restapi
+spec:
+  ports:
+    - name: 8000-tcp
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+  sessionAffinity: None
+  selector:
+    deployment: restapi
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: restapi
+  labels:
+    app.kubernetes.io/component: http
+    app.kubernetes.io/instance: restapi
+    app.kubernetes.io/managed-by: ibm-appconnect
+    app.kubernetes.io/name: restapi
+    release: restapi
+spec:
+  to:
+    kind: Service
+    name: restapi
+    weight: 100
+  port:
+    targetPort: 8000-tcp
+  wildcardPolicy: None

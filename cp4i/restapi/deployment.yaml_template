@@ -1,0 +1,60 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: restapi
+  labels:
+    app: restapi
+    app.kubernetes.io/component: restapi
+    app.kubernetes.io/instance: restapi
+    app.kubernetes.io/name: restapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      deployment: restapi
+  template:
+    metadata:
+      labels:
+        deployment: restapi
+    spec:
+      containers:
+        - name: restapi
+          image: >-
+            image-registry.openshift-image-registry.svc:5000/{{NAMESPACE}}/restapi:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: INSTANA_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "500Mi"
+              cpu: 1
+            limits:
+              memory: "2048Mi"
+              cpu: 2
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 5
+            failureThreshold: 5
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
