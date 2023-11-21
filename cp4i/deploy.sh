@@ -129,7 +129,7 @@ line_separator "SUCCESS - IBM MQ CREATED"
 ./configure-apiconnect.sh -n $NAMESPACE -r $API_CONNECT_CLUSTER_NAME
 
 cd $SCRIPT_DIR/restapi
-./deploy $NAMESPACE
+./deploy.sh $NAMESPACE
 
 echo ""
 echo ""
