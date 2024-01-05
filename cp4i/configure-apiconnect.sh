@@ -1,7 +1,7 @@
 #!/bin/bash
 #******************************************************************************
 # Licensed Materials - Property of IBM
-# (c) Copyright IBM Corporation 2023. All Rights Reserved.
+# (c) Copyright IBM Corporation 2023, 2024. All Rights Reserved.
 #
 # Note to U.S. Government Users Restricted Rights:
 # Use, duplication or disclosure restricted by GSA ADP Schedule
@@ -150,7 +150,7 @@ function add_cs_admin_user() {
   org_name=${2}
   porg_url=${3}
 
-  echo "Get the Provider Organization Roles for ${org_name}"
+  echo "Get the Provider Organization Roles for ${org_name} from ${porg_url}/roles"
   
   headers="-H \"Accept: application/json\" -H \"Authorization: Bearer ${token}\""
   response=`curl -X GET ${porg_url}/roles \
@@ -159,14 +159,14 @@ function add_cs_admin_user() {
 
   $DEBUG && echo "[DEBUG] $(echo ${response})"
   administrator_role_url=$(echo ${response} | jq -r '.results[]|select(.name=="administrator")|.url')
-  $DEBUG && echo "administrator_role_url=${administrator_role_url}"
+  $DEBUG && echo "administrator_role_url=${administrator_role_url} API_EP=${API_EP}"
 
   echo "Add the CS admin user to the list of members for ${org_name}"
   member_json='{
     "name": "cs-admin",
     "user": {
-      "identity_provider": "common-services",
-      "url": "https://'${API_EP}'/api/user-registries/admin/common-services/users/admin"
+      "identity_provider": "integration-keycloak",
+      "url": "https://'${API_EP}'/api/user-registries/admin/integration-keycloak/users/integration-admin"
     },
     "role_urls": [
       "'${administrator_role_url}'"
@@ -199,7 +199,7 @@ function add_catalog() {
   $DEBUG && echo "[DEBUG] $(echo ${response} | jq .)"
 
   catalogId=`echo ${response} | jq -r '.url' | sed "s/^.*$NAMESPACE\/$RELEASE_NAME//"`
-  catalog_url="https://${API_EP}${catalogId}"
+  catalog_url="${catalogId}"
   $DEBUG && echo "[DEBUG] $(echo catalog_url=${catalog_url})"
 
   if [[ "${catalogId}" == "null" ]]; then
@@ -217,6 +217,7 @@ function add_catalog() {
   fi
 
   echo "Add a portal to the catalog named ${catalog_name}"
+  echo "PTL_WEB_EP=$PTL_WEB_EP org_name=$org_name API_EP=$API_EP"
   response=`curl -X PUT ${catalog_url}/settings \
                  -s -k -H "Content-Type: application/json" -H "Accept: application/json" \
                  -H "Authorization: Bearer ${token}" \
@@ -324,7 +325,8 @@ provider_token="${RESULT}"
 
 # Main org/catalog
 create_org "$admin_token" "${ORG_NAME}" "${MAIN_PORG_TITLE}" "${owner_url}"
-main_porg_url="https://${API_EP}${RESULT}"
+$DEBUG && echo "API_EP ${API_EP} RESULT ${RESULT}"
+main_porg_url="${RESULT}"
 $DEBUG && echo "[DEBUG] $(echo token=${provider_token} org_name=${ORG_NAME} porg_url=${main_porg_url})"
 add_cs_admin_user "${provider_token}" "${ORG_NAME}" "${main_porg_url}"
 add_catalog "${provider_token}" "${ORG_NAME}" "${main_porg_url}" "${MAIN_CATALOG}" "${MAIN_CATALOG_TITLE}"

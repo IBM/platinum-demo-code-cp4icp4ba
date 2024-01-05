@@ -2,3 +2,4 @@ cp4i/restapi/deployment.yaml
 cp4i/mq/externalqmgr.yaml
 cp4i/setupResources/apic-cluster.yaml
 cp4i/setupResources/appconnect-dashboard.yaml
+cp4i/setupResources/platform-nav.yaml
